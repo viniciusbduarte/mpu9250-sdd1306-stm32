@@ -60,6 +60,12 @@ void Error_Handler(void);
 
 /* USER CODE BEGIN Private defines */
 
+/* MPU9250 I2C Pin Definitions */
+#define MPU_SCL_Pin GPIO_PIN_8
+#define MPU_SCL_GPIO_Port GPIOB
+#define MPU_SDA_Pin GPIO_PIN_9
+#define MPU_SDA_GPIO_Port GPIOB
+
 /* USER CODE END Private defines */
 
 #ifdef __cplusplus
