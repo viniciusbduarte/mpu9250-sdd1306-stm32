@@ -24,7 +24,9 @@ bool IMU_Init(void)
     // Habilita DMP com calibração automática de giroscópio
     // DMP_FEATURE_6X_LP_QUAT: Calcula quaternion com acelerômetro + giroscópio
     // DMP_FEATURE_GYRO_CAL: Calibra automaticamente o bias do giroscópio após 8s imóvel
-    result = MPU9250_dmpBegin(DMP_FEATURE_6X_LP_QUAT | DMP_FEATURE_GYRO_CAL, 20);
+    // DMP_FEATURE_SEND_RAW_ACCEL/GYRO: Envia dados brutos ao FIFO
+    result = MPU9250_dmpBegin(DMP_FEATURE_6X_LP_QUAT | DMP_FEATURE_GYRO_CAL | 
+                              DMP_FEATURE_SEND_RAW_ACCEL | DMP_FEATURE_SEND_RAW_GYRO, 20);
     if (result != INV_SUCCESS) {
         return false;
     }
@@ -101,4 +103,147 @@ void IMU_QuatToEuler(long *quat, IMU_Euler_t *pEuler)
     // Yaw (rotação em Z)
     pEuler->yaw = atan2f(2.0f * (q0 * q3 + q1 * q2),
                          1.0f - 2.0f * (q2 * q2 + q3 * q3)) * 180.0f / PI;
+}
+
+/**
+ * @brief Converte dados brutos para dados calibrados (G's, deg/s, µT)
+ */
+void IMU_GetCalibData(IMU_RawData_t *pRawData, IMU_CalibData_t *pCalibData)
+{
+    if (pRawData == NULL || pCalibData == NULL) {
+        return;
+    }
+
+    // Converte aceleração bruta para G's
+    pCalibData->accel_g[0] = MPU9250_calcAccel(pRawData->accel[0]);
+    pCalibData->accel_g[1] = MPU9250_calcAccel(pRawData->accel[1]);
+    pCalibData->accel_g[2] = MPU9250_calcAccel(pRawData->accel[2]);
+
+    // Converte giroscópio bruto para graus/segundo
+    pCalibData->gyro_dps[0] = MPU9250_calcGyro(pRawData->gyro[0]);
+    pCalibData->gyro_dps[1] = MPU9250_calcGyro(pRawData->gyro[1]);
+    pCalibData->gyro_dps[2] = MPU9250_calcGyro(pRawData->gyro[2]);
+
+    // Converte magnetômetro bruto para µT (usa globais mx, my, mz preenchidos por updateCompass)
+    pCalibData->mag_ut[0] = MPU9250_calcMag(mx);
+    pCalibData->mag_ut[1] = MPU9250_calcMag(my);
+    pCalibData->mag_ut[2] = MPU9250_calcMag(mz);
+}
+
+/**
+ * @brief Obtém heading da bússola (mx, my, mz devem estar preenchidos do FIFO)
+ */
+bool IMU_GetCompass(IMU_Compass_t *pCompass)
+{
+    if (pCompass == NULL) {
+        return false;
+    }
+
+    // Calcula heading usando dados globais mx, my, mz do MPU9250-DMP.h
+    pCompass->heading = MPU9250_computeCompassHeading();
+    
+    // Armazena componentes brutos para referência
+    pCompass->compassX = (float)mx;
+    pCompass->compassY = (float)my;
+
+    return true;
+}
+
+/**
+ * @brief Ativa detecção de taps
+ */
+bool IMU_EnableTap(void)
+{
+    // Habilita DMP_FEATURE_TAP (se não estiver já ativado)
+    // Configura threshold em 250mg/ms para cada eixo, tapTime 100ms, tapMulti 500ms, min 1 tap
+    inv_error_t result = MPU9250_dmpSetTap(250, 250, 250, 1, 100, 500);
+    if (result != INV_SUCCESS) {
+        return false;
+    }
+
+    // Obtém features ativas e adiciona TAP, preservando tudo
+    unsigned short enabledFeatures = MPU9250_dmpGetEnabledFeatures();
+    enabledFeatures |= DMP_FEATURE_TAP;
+    // Garante que dados brutos continuam sendo enviados
+    enabledFeatures |= (DMP_FEATURE_SEND_RAW_ACCEL | DMP_FEATURE_SEND_RAW_GYRO);
+    
+    result = MPU9250_dmpEnableFeatures(enabledFeatures);
+    if (result != INV_SUCCESS) {
+        return false;
+    }
+
+    return true;
+}
+
+/**
+ * @brief Verifica e obtém dados de tap
+ */
+bool IMU_GetTap(IMU_Tap_t *pTap)
+{
+    if (pTap == NULL) {
+        return false;
+    }
+
+    pTap->tapDetected = MPU9250_tapAvailable();
+    
+    if (pTap->tapDetected) {
+        pTap->tapDir = MPU9250_getTapDir();    // 0-5: X-, X+, Y-, Y+, Z-, Z+
+        pTap->tapCount = MPU9250_getTapCount();
+    } else {
+        pTap->tapDir = 0;
+        pTap->tapCount = 0;
+    }
+
+    return pTap->tapDetected;
+}
+
+/**
+ * @brief Ativa pedômetro
+ */
+bool IMU_EnablePedometer(void)
+{
+    // Obtém features ativas e adiciona PEDOMETER, preservando tudo
+    unsigned short enabledFeatures = MPU9250_dmpGetEnabledFeatures();
+    enabledFeatures |= DMP_FEATURE_PEDOMETER;
+    // Garante que dados brutos continuam sendo enviados
+    enabledFeatures |= (DMP_FEATURE_SEND_RAW_ACCEL | DMP_FEATURE_SEND_RAW_GYRO);
+    
+    inv_error_t result = MPU9250_dmpEnableFeatures(enabledFeatures);
+    if (result != INV_SUCCESS) {
+        return false;
+    }
+
+    return true;
+}
+
+/**
+ * @brief Obtém número de passos
+ */
+uint32_t IMU_GetSteps(void)
+{
+    return (uint32_t)MPU9250_dmpGetPedometerSteps();
+}
+
+/**
+ * @brief Reseta contador de passos
+ */
+void IMU_ResetSteps(void)
+{
+    MPU9250_dmpSetPedometerSteps(0);
+}
+
+/**
+ * @brief Obtém temperatura do sensor em graus Celsius
+ * A variável temperature está em formato Q16 (multiplicada por 65536)
+ * Fórmula já inclusa na biblioteca: (35 + ((raw - offset) / sensitivity)) * 65536
+ */
+float IMU_GetTemperature(void)
+{
+    extern long temperature;  // Variável global da biblioteca MPU9250 em Q16
+    // Atualiza leitura de temperatura
+    MPU9250_update(UPDATE_TEMP);
+    HAL_Delay(5);
+    // Converte de Q16 para graus Celsius
+    float temp_c = (float)temperature / 65536.0f;
+    return temp_c;
 }
