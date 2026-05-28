@@ -94,7 +94,7 @@ int main(void)
   MX_I2C1_Init();
   /* USER CODE BEGIN 2 */
   ssd1306_Init();
- // ssd1306_Fill(White);
+  menuInit();
 
   /* USER CODE END 2 */
 

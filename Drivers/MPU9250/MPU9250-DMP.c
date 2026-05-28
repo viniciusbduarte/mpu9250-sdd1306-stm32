@@ -1,10 +1,24 @@
 #include "MPU9250-DMP.h"
 #include "MPU9250_RegisterMap.h"
 #include "math.h"
+#include <string.h>
 
 #define PI 3.14159265
 
 #include "inv_mpu.h"
+
+/* Global variable definitions */
+unsigned short _aSense;
+float _gSense, _mSense;
+
+int ax, ay, az;
+int gx, gy, gz;
+int mx, my, mz;
+long qw, qx, qy, qz;
+long temperature;
+unsigned long time_inside;
+float pitch_inside, roll_inside, yaw_inside;
+float heading;
 
 static unsigned char mpu9250_orientation;
 static unsigned char tap_count;
@@ -35,6 +49,9 @@ inv_error_t MPU9250_begin(void)
 {
 	inv_error_t result;
 	struct int_param_s int_param;
+
+	// Initialize the int_param structure (zeroed out for safety)
+	memset(&int_param, 0, sizeof(int_param));
 
 	//	Wire.begin();
 

@@ -44,18 +44,18 @@ enum t_axisOrder {
 #define ORIENT_REVERSE_PORTRAIT  2
 #define ORIENT_REVERSE_LANDSCAPE 3
 
-unsigned short _aSense;
-float _gSense, _mSense;
+extern unsigned short _aSense;
+extern float _gSense, _mSense;
 
 
-int ax, ay, az;
-int gx, gy, gz;
-int mx, my, mz;
-long qw, qx, qy, qz;
-long temperature;
-unsigned long time_inside;
-float pitch_inside, roll_inside, yaw_inside;
-float heading;
+extern int ax, ay, az;
+extern int gx, gy, gz;
+extern int mx, my, mz;
+extern long qw, qx, qy, qz;
+extern long temperature;
+extern unsigned long time_inside;
+extern float pitch_inside, roll_inside, yaw_inside;
+extern float heading;
 
 int MPU9250_DMP();
 
