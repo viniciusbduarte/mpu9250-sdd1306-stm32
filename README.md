@@ -2,12 +2,12 @@
 
 ## Identificação
 
-**Formação:** Sistemas Embarcados Virtus-CC
-**Curso:** Curso 2 — Introdução aos Microcontroladores de 32 bits - Bare Metal
-**Docente:** Prof. D.Sc. Rafael Bezerra Correia Lima
-**Discente:** Vinicius Batista Duarte
-**Periféricos Utilizados:** I2C, MPU9250, SSD1306 OLED, STM32F407VET6
-**Versão:** 1.0 — 28 de Maio de 2026
+- **Formação:** Sistemas Embarcados Virtus-CC
+- **Curso:** Curso 2 — Introdução aos Microcontroladores de 32 bits - Bare Metal
+- **Docente:** Prof. D.Sc. Rafael Bezerra Correia Lima
+- **Discente:** Vinicius Batista Duarte
+- **Periféricos Utilizados:** I2C, MPU9250, SSD1306 OLED, STM32F407VET6
+- **Versão:** 1.0 — 28 de Maio de 2026
 
 ---
 
